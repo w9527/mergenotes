@@ -1,0 +1,12 @@
+bin/
+obj/
+.dotnet_home/
+*.user
+*.suo
+*.cache
+*.db-shm
+*.db-wal
+*.log
+_blank.jwlibrary
+src/**/App.axaml.g.cs
+src/**/MainWindow.axaml.g.cs

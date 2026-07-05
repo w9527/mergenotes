@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>false</UseWPF>
+    <UseWindowsForms>false</UseWindowsForms>
+    <ApplicationIcon>Assets\MergerNotes.ico</ApplicationIcon>
+    <AssemblyName>MergerNotes</AssemblyName>
+    <RootNamespace>MergerNotes</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.2.0" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.2.0" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.0" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.0" />
+    <PackageReference Include="Avalonia.ReactiveUI" Version="11.2.0" />
+    <PackageReference Include="Avalonia.Diagnostics" Version="11.2.0">
+      <IncludeAssets Condition="'$(Configuration)' == 'Debug'">All</IncludeAssets>
+      <PrivateAssets Condition="'$(Configuration)' == 'Release'">all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\AppLogo.png" />
+    <AvaloniaResource Include="Assets\MergerNotes.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\\MergerNotes.Core\\MergerNotes.Core.csproj" />
+    <ProjectReference Include="..\\MergerNotes.Infrastructure\\MergerNotes.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

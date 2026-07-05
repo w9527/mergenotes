@@ -1,0 +1,125 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shapes="clr-namespace:Avalonia.Controls.Shapes;assembly=Avalonia.Controls"
+        x:Class="MergerNotes.App.MainWindow"
+        Width="1100"
+        Height="920"
+        Title="{Binding AppTitle}"
+        Background="#F3EEF8">
+  <Window.Styles>
+    <Style Selector="TextBlock">
+      <Setter Property="Foreground" Value="#241A33" />
+    </Style>
+    <Style Selector="Button">
+      <Setter Property="Foreground" Value="#241A33" />
+      <Setter Property="CornerRadius" Value="12" />
+    </Style>
+  </Window.Styles>
+  <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="24">
+    <Border Padding="22" CornerRadius="22">
+      <Border.Background>
+        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+          <GradientStop Color="#5B3892" Offset="0" />
+          <GradientStop Color="#6F4AA5" Offset="0.55" />
+          <GradientStop Color="#3B225D" Offset="1" />
+        </LinearGradientBrush>
+      </Border.Background>
+      <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
+        <Border Width="104" Height="104" CornerRadius="28" Background="White" BorderBrush="#E2D8F3" BorderThickness="1" VerticalAlignment="Center" Padding="10">
+          <Image Source="avares://MergerNotes/Assets/AppLogo.png" Stretch="Uniform" />
+        </Border>
+        <StackPanel Grid.Column="1" Margin="18,8,0,8" Spacing="6">
+          <TextBlock Text="{Binding AppTitle}" FontSize="30" FontWeight="SemiBold" Foreground="White" />
+          <TextBlock Text="{Binding AppSubtitle}" Foreground="#F4EFFF" Opacity="0.95" />
+        </StackPanel>
+        <StackPanel Grid.Column="2" Orientation="Vertical" HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="8">
+          <TextBlock Text="{Binding LanguageLabel}" Foreground="#F7F2FF" Opacity="0.85" HorizontalAlignment="Right" />
+          <ComboBox Width="190"
+                    ItemsSource="{Binding LanguageChoices}"
+                    SelectedItem="{Binding SelectedLanguageChoice, Mode=TwoWay}"
+                    DisplayMemberBinding="{Binding DisplayName}" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Border Grid.Row="1" Margin="0,16,0,0" Padding="16" CornerRadius="14" Background="#FFFFFF">
+      <StackPanel Orientation="Horizontal" Spacing="12">
+        <Button x:Name="OpenBaseButton" Content="{Binding OpenBaseButtonText}" Padding="16,10" Background="#E8DEF7" />
+        <Button x:Name="OpenIncomingButton" Content="{Binding OpenIncomingButtonText}" Padding="16,10" Background="#E8DEF7" />
+        <Button x:Name="MergeButton" Content="{Binding MergeButtonText}" Padding="16,10" Background="#D9C7F0" />
+        <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center" FontWeight="SemiBold" />
+      </StackPanel>
+    </Border>
+
+    <Border Grid.Row="2" Margin="0,16,0,0" Padding="16" CornerRadius="14" Background="#FFFFFF">
+      <StackPanel Spacing="10">
+        <TextBlock Text="{Binding WorkspaceTitle}" FontWeight="SemiBold" />
+        <TextBlock Text="{Binding BaseBackupPath}" TextWrapping="Wrap" Opacity="0.85" />
+        <TextBlock Text="{Binding IncomingBackupPath}" TextWrapping="Wrap" Opacity="0.85" />
+        <TextBlock Text="{Binding MergedOutputPath}" TextWrapping="Wrap" Opacity="0.85" />
+      </StackPanel>
+    </Border>
+
+    <ScrollViewer Grid.Row="3" Margin="0,16,0,0">
+      <StackPanel Spacing="16">
+        <Border Padding="16" CornerRadius="14" Background="#FFFFFF">
+          <StackPanel Spacing="8">
+            <TextBlock Text="{Binding BaseBackupTitle}" FontSize="18" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding BaseSummaryText}" TextWrapping="Wrap" />
+            <ItemsControl ItemsSource="{Binding BaseNotePreviews}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border Margin="0,0,0,10" Padding="12" CornerRadius="10" Background="#F6F0FB">
+                    <StackPanel Spacing="4">
+                      <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding Content}" TextWrapping="Wrap" Opacity="0.9" MaxLines="3" />
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+
+        <Border Padding="16" CornerRadius="14" Background="#FFFFFF">
+          <StackPanel Spacing="8">
+            <TextBlock Text="{Binding IncomingBackupTitle}" FontSize="18" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding IncomingSummaryText}" TextWrapping="Wrap" />
+            <ItemsControl ItemsSource="{Binding IncomingNotePreviews}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border Margin="0,0,0,10" Padding="12" CornerRadius="10" Background="#EFF4FD">
+                    <StackPanel Spacing="4">
+                      <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding Content}" TextWrapping="Wrap" Opacity="0.9" MaxLines="3" />
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+
+        <Border Padding="16" CornerRadius="14" Background="#FFFFFF">
+          <StackPanel Spacing="8">
+            <TextBlock Text="{Binding MergeResultTitle}" FontSize="18" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding MergeReportText}" TextWrapping="Wrap" />
+            <TextBlock Text="{Binding MergedSummaryText}" TextWrapping="Wrap" Margin="0,8,0,0" />
+            <ItemsControl ItemsSource="{Binding MergedNotePreviews}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border Margin="0,0,0,10" Padding="12" CornerRadius="10" Background="#F0EAFB">
+                    <StackPanel Spacing="4">
+                      <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding Content}" TextWrapping="Wrap" Opacity="0.9" MaxLines="3" />
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</Window>
