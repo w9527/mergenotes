@@ -1,5 +1,4 @@
 using Avalonia;
-using Avalonia.ReactiveUI;
 
 namespace MergerNotes.App;
 
@@ -14,7 +13,5 @@ internal static class Program
     public static AppBuilder BuildAvaloniaApp()
         => AppBuilder.Configure<App>()
             .UsePlatformDetect()
-            .WithInterFont()
-            .LogToTrace()
-            .UseReactiveUI();
+            .LogToTrace();
 }

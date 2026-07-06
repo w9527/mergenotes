@@ -19,14 +19,14 @@ internal static class JwlibrarySnapshotReader
         var json = await File.ReadAllTextAsync(manifestPath, cancellationToken).ConfigureAwait(false);
         using var doc = JsonDocument.Parse(json);
         var root = doc.RootElement;
-        var backup = root.GetProperty("userDataBackup");
+        var backup = TryGetProperty(root, "userDataBackup", out var nestedBackup) ? nestedBackup : root;
 
         return new BackupPackage(
-            root.GetProperty("name").GetString() ?? string.Empty,
-            ParseDateTimeOffset(root.GetProperty("creationDate").GetString()),
-            backup.GetProperty("databaseName").GetString() ?? "userData.db",
-            backup.GetProperty("hash").GetString() ?? string.Empty,
-            backup.GetProperty("schemaVersion").GetInt32());
+            GetString(root, backup, "name") ?? string.Empty,
+            ParseDateTimeOffset(GetString(root, backup, "creationDate")),
+            GetString(backup, root, "databaseName", "database_name") ?? "userData.db",
+            GetString(backup, root, "hash", "databaseSha256", "database_sha256") ?? string.Empty,
+            GetInt32(backup, root, "schemaVersion") ?? 0);
     }
 
     public static async Task<string> ComputeSha256Async(string path, CancellationToken cancellationToken)
@@ -92,11 +92,38 @@ internal static class JwlibrarySnapshotReader
 
     private static async Task<IReadOnlyList<DocumentLocation>> ReadLocationsAsync(SqliteConnection connection, CancellationToken cancellationToken)
     {
+        try
+        {
+            return await ReadLocationsCoreAsync(connection, useLegacyColumns: false, cancellationToken).ConfigureAwait(false);
+        }
+        catch (SqliteException ex) when (ex.Message.Contains("no such column: Specialty", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("no such column: Edition", StringComparison.OrdinalIgnoreCase))
+        {
+            return await ReadLocationsCoreAsync(connection, useLegacyColumns: true, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private static async Task<IReadOnlyList<DocumentLocation>> ReadLocationsCoreAsync(SqliteConnection connection, bool useLegacyColumns, CancellationToken cancellationToken)
+    {
         var list = new List<DocumentLocation>();
+        var selectColumns = new List<string>
+        {
+            "LocationId",
+            "BookNumber",
+            "ChapterNumber",
+            "DocumentId",
+            "Track",
+            "IssueTagNumber",
+            "KeySymbol",
+            "MepsLanguage",
+            "Type",
+            "Title",
+            useLegacyColumns ? "NULL AS Specialty" : "Specialty",
+            useLegacyColumns ? "NULL AS Edition" : "Edition"
+        };
         await using var command = connection.CreateCommand();
         command.CommandText =
-            """
-            SELECT LocationId, BookNumber, ChapterNumber, DocumentId, Track, IssueTagNumber, KeySymbol, MepsLanguage, Type, Title, Specialty, Edition
+            $"""
+            SELECT {string.Join(", ", selectColumns)}
             FROM Location
             ORDER BY LocationId
             """;
@@ -346,6 +373,62 @@ internal static class JwlibrarySnapshotReader
 
     private static DateTimeOffset ParseDateTimeOffset(string? value)
         => DateTimeOffset.Parse(value ?? "1970-01-01T00:00:00Z", null, System.Globalization.DateTimeStyles.RoundtripKind);
+
+    private static bool TryGetProperty(JsonElement element, string name, out JsonElement value)
+    {
+        value = default;
+        if (element.ValueKind == JsonValueKind.Object && element.TryGetProperty(name, out value))
+        {
+            return true;
+        }
+
+        value = default;
+        return false;
+    }
+
+    private static string? GetString(JsonElement preferred, JsonElement fallback, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            if (preferred.ValueKind == JsonValueKind.Object &&
+                preferred.TryGetProperty(name, out var preferredValue) &&
+                preferredValue.ValueKind == JsonValueKind.String)
+            {
+                return preferredValue.GetString();
+            }
+
+            if (fallback.ValueKind == JsonValueKind.Object &&
+                fallback.TryGetProperty(name, out var fallbackValue) &&
+                fallbackValue.ValueKind == JsonValueKind.String)
+            {
+                return fallbackValue.GetString();
+            }
+        }
+
+        return null;
+    }
+
+    private static int? GetInt32(JsonElement preferred, JsonElement fallback, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            if (preferred.ValueKind == JsonValueKind.Object &&
+                preferred.TryGetProperty(name, out var preferredValue) &&
+                preferredValue.TryGetInt32(out var preferredInt))
+            {
+                return preferredInt;
+            }
+
+            if (fallback.ValueKind == JsonValueKind.Object &&
+                fallback.TryGetProperty(name, out var fallbackValue) &&
+                fallbackValue.TryGetInt32(out var fallbackInt))
+            {
+                return fallbackInt;
+            }
+        }
+
+        return null;
+    }
 
     private static string? GetNullableString(SqliteDataReader reader, int ordinal)
         => reader.IsDBNull(ordinal) ? null : reader.GetString(ordinal);

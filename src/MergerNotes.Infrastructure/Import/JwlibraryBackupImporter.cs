@@ -34,9 +34,10 @@ public sealed class JwlibraryBackupImporter : IBackupImporter
             }
 
             var dbHash = await JwlibrarySnapshotReader.ComputeSha256Async(dbPath, cancellationToken).ConfigureAwait(false);
-            if (!string.Equals(dbHash, manifest.DatabaseSha256, StringComparison.OrdinalIgnoreCase))
+            var hashMatches = string.Equals(dbHash, manifest.DatabaseSha256, StringComparison.OrdinalIgnoreCase);
+            if (!hashMatches)
             {
-                throw new InvalidDataException("Database SHA-256 did not match the manifest.");
+                manifest = manifest with { DatabaseHashMatchesManifest = false };
             }
 
             return await JwlibrarySnapshotReader.ReadSnapshotAsync(manifest, dbPath, extractDir, cancellationToken).ConfigureAwait(false);

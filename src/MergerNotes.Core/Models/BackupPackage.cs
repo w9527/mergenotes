@@ -5,4 +5,7 @@ public sealed record BackupPackage(
     DateTimeOffset CreationDate,
     string DatabaseName,
     string DatabaseSha256,
-    int SchemaVersion);
+    int SchemaVersion)
+{
+    public bool DatabaseHashMatchesManifest { get; init; } = true;
+}

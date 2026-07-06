@@ -399,6 +399,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             $"- Name: {package.Name}\n" +
             $"- Schema: {package.SchemaVersion}\n" +
             $"- Database: {package.DatabaseName}\n" +
+            $"- {strings.SummaryDatabaseHash}: {(package.DatabaseHashMatchesManifest ? strings.SummaryDatabaseHashVerified : strings.SummaryDatabaseHashMismatch)}\n" +
             $"\n{strings.SummaryCounts}\n" +
             $"- {strings.SummaryLocations}: {snapshot.Locations.Count}\n" +
             $"- {strings.SummaryUserMarks}: {snapshot.UserMarks.Count}\n" +

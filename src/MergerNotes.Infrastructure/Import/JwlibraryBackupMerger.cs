@@ -91,6 +91,8 @@ public sealed class JwlibraryBackupMerger : IBackupMerger
         await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
 
         await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+        var locationColumns = await GetTableColumnsAsync(connection, "Location", cancellationToken).ConfigureAwait(false);
+        var includeSpecialtyEdition = locationColumns.Contains("Specialty", StringComparer.OrdinalIgnoreCase) && locationColumns.Contains("Edition", StringComparer.OrdinalIgnoreCase);
 
         var nextIds = await LoadNextIdsAsync(connection, cancellationToken).ConfigureAwait(false);
         var locationMap = BuildLocationMap(baseSnapshot.Locations);
@@ -122,7 +124,7 @@ public sealed class JwlibraryBackupMerger : IBackupMerger
             if (!locationMap.TryGetValue(key, out var mappedId))
             {
                 mappedId = nextIds.LocationId++;
-                await InsertLocationAsync(connection, transaction, location with { LocationId = mappedId }, cancellationToken).ConfigureAwait(false);
+                await InsertLocationAsync(connection, transaction, location with { LocationId = mappedId }, includeSpecialtyEdition, cancellationToken).ConfigureAwait(false);
                 locationMap[key] = mappedId;
                 addedLocations++;
             }
@@ -389,7 +391,15 @@ public sealed class JwlibraryBackupMerger : IBackupMerger
     }
 
     private static Dictionary<LocationKey, long> BuildLocationMap(IEnumerable<DocumentLocation> rows)
-        => rows.ToDictionary(LocationKey.From, x => x.LocationId);
+    {
+        var map = new Dictionary<LocationKey, long>();
+        foreach (var row in rows)
+        {
+            map.TryAdd(LocationKey.From(row), row.LocationId);
+        }
+
+        return map;
+    }
 
     private static Dictionary<Guid, long> BuildUserMarkMap(IEnumerable<UserMark> rows)
         => rows.ToDictionary(x => x.UserMarkGuid, x => x.UserMarkId);
@@ -404,7 +414,15 @@ public sealed class JwlibraryBackupMerger : IBackupMerger
         => rows.ToDictionary(x => BookmarkKey.From(x, x.LocationId, x.PublicationLocationId), x => x.BookmarkId);
 
     private static Dictionary<string, long> BuildMediaMap(IEnumerable<MediaAsset> rows)
-        => rows.ToDictionary(x => x.Sha256, x => x.IndependentMediaId);
+    {
+        var map = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+        foreach (var row in rows)
+        {
+            map.TryAdd(row.Sha256, row.IndependentMediaId);
+        }
+
+        return map;
+    }
 
     private static HashSet<InputFieldKey> BuildInputFieldMap(IEnumerable<InputField> rows)
         => rows.Select(x => new InputFieldKey(x.LocationId, x.TextTag)).ToHashSet();
@@ -435,15 +453,19 @@ public sealed class JwlibraryBackupMerger : IBackupMerger
         return string.IsNullOrWhiteSpace(directory) ? unique : Path.Combine(directory, unique);
     }
 
-    private static async Task InsertLocationAsync(SqliteConnection connection, SqliteTransaction transaction, DocumentLocation row, CancellationToken cancellationToken)
+    private static async Task InsertLocationAsync(SqliteConnection connection, SqliteTransaction transaction, DocumentLocation row, bool includeSpecialtyEdition, CancellationToken cancellationToken)
     {
         await using var command = connection.CreateCommand();
         command.Transaction = transaction;
-        command.CommandText =
-            """
-            INSERT INTO Location (LocationId, BookNumber, ChapterNumber, DocumentId, Track, IssueTagNumber, KeySymbol, MepsLanguage, Type, Title, Specialty, Edition)
-            VALUES ($LocationId, $BookNumber, $ChapterNumber, $DocumentId, $Track, $IssueTagNumber, $KeySymbol, $MepsLanguage, $Type, $Title, $Specialty, $Edition)
-            """;
+        command.CommandText = includeSpecialtyEdition
+            ? """
+              INSERT INTO Location (LocationId, BookNumber, ChapterNumber, DocumentId, Track, IssueTagNumber, KeySymbol, MepsLanguage, Type, Title, Specialty, Edition)
+              VALUES ($LocationId, $BookNumber, $ChapterNumber, $DocumentId, $Track, $IssueTagNumber, $KeySymbol, $MepsLanguage, $Type, $Title, $Specialty, $Edition)
+              """
+            : """
+              INSERT INTO Location (LocationId, BookNumber, ChapterNumber, DocumentId, Track, IssueTagNumber, KeySymbol, MepsLanguage, Type, Title)
+              VALUES ($LocationId, $BookNumber, $ChapterNumber, $DocumentId, $Track, $IssueTagNumber, $KeySymbol, $MepsLanguage, $Type, $Title)
+              """;
         AddLocationParameters(command, row);
         await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
@@ -460,8 +482,11 @@ public sealed class JwlibraryBackupMerger : IBackupMerger
         command.Parameters.AddWithValue("$MepsLanguage", (object?)row.MepsLanguage ?? DBNull.Value);
         command.Parameters.AddWithValue("$Type", row.Type);
         command.Parameters.AddWithValue("$Title", (object?)row.Title ?? DBNull.Value);
-        command.Parameters.AddWithValue("$Specialty", (object?)row.Specialty ?? DBNull.Value);
-        command.Parameters.AddWithValue("$Edition", (object?)row.Edition ?? DBNull.Value);
+        if (command.CommandText.Contains("Specialty", StringComparison.OrdinalIgnoreCase))
+        {
+            command.Parameters.AddWithValue("$Specialty", (object?)row.Specialty ?? DBNull.Value);
+            command.Parameters.AddWithValue("$Edition", (object?)row.Edition ?? DBNull.Value);
+        }
     }
 
     private static async Task InsertUserMarkAsync(SqliteConnection connection, SqliteTransaction transaction, UserMark row, CancellationToken cancellationToken)
@@ -752,4 +777,19 @@ public sealed class JwlibraryBackupMerger : IBackupMerger
     private readonly record struct BlockRangeKey(int BlockType, long Identifier, long? StartToken, long? EndToken, long UserMarkId);
 
     private readonly record struct TagMapKey(long? NoteId, long? LocationId, long? PlaylistItemId, long TagId, int Position);
+
+    private static async Task<HashSet<string>> GetTableColumnsAsync(SqliteConnection connection, string tableName, CancellationToken cancellationToken)
+    {
+        var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        await using var command = connection.CreateCommand();
+        command.CommandText = $"PRAGMA table_info({tableName})";
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+        while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+        {
+            columns.Add(reader.GetString(1));
+        }
+
+        return columns;
+    }
 }

@@ -19,13 +19,16 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = new MainWindow
+            var mainWindow = new MainWindow
             {
                 DataContext = new ViewModels.MainWindowViewModel(
                     new JwlibraryBackupImporter(),
                     new JwlibraryBackupMerger(),
                     Localization)
             };
+
+            desktop.MainWindow = mainWindow;
+            mainWindow.Show();
         }
 
         base.OnFrameworkInitializationCompleted();
